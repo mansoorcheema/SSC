@@ -74,7 +74,7 @@ def main():
 def train():
     # ---- create model ---------- ---------- ---------- ---------- ----------#
     net = make_model(args.model, num_classes=12).cuda()
-    net = torch.nn.DataParallel(net)  # Multi-GPU
+    #net = torch.nn.DataParallel(net)  # Multi-GPU
 
     # ---- optionally resume from a checkpoint --------- ---------- ----------#
     if args.resume:
@@ -191,7 +191,7 @@ def validate_on_dataset_stsdf(model, date_loader, save_ply=False):
                 var_x_volume = Variable(volume.float()).cuda()
                 y_pred = model(x_depth=var_x_depth, x_tsdf=var_x_volume, p=position)
             else:
-                var_x_rgb = Variable(rgb.float()).cuda()
+                var_x_rgb = Variable(rgb.float())
                 y_pred = model(x_depth=var_x_depth, x_rgb=var_x_rgb, p=position)  # y_pred.size(): (bs, C, W, H, D)
 
             y_pred = y_pred.cpu().data.numpy()  # CUDA to CPU, Variable to numpy
