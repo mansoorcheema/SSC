@@ -72,6 +72,10 @@ def main():
 
 
 def train():
+    
+    # ---- Data loader
+    train_loader, val_loader = make_data_loader(args)
+    
     # ---- create model ---------- ---------- ---------- ---------- ----------#
     net = make_model(args.model, num_classes=12).cuda()
     #net = torch.nn.DataParallel(net)  # Multi-GPU
@@ -104,9 +108,8 @@ def train():
         cp_filename))
     print("Checkpoint filename:{}".format(cp_filename))
 
-    # ---- Data loader
-    train_loader, val_loader = make_data_loader(args)
-
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_adj_n, gamma=args.lr_adj_rate, last_epoch=-1)
+        
     np.set_printoptions(precision=1)
 
     # ---- Train
@@ -119,8 +122,7 @@ def train():
         # print("epoch {}".format(epoch))
         net.train()  # switch to train mode
         # adjust_learning_rate(optimizer, args.lr, epoch, n=args.lr_adj_n, rate=args.lr_adj_rate)  # n=10, rate=0.9
-        torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_adj_n, gamma=args.lr_adj_rate, last_epoch=-1)
-        
+       
         decs_str = 'Training epoch {}/{}'.format(epoch + 1, args.epochs)
         log_loss_1epoch = 0.0
         step_count = 0
@@ -151,6 +153,8 @@ def train():
 
             loss.backward()
             optimizer.step()
+
+        scheduler.step()
 
         # ---- Evaluate on validation set
         v_prec, v_recall, v_iou, v_acc, v_ssc_iou, v_mean_iou = validate_on_dataset_stsdf(net, val_loader)
@@ -191,7 +195,7 @@ def validate_on_dataset_stsdf(model, date_loader, save_ply=False):
                 var_x_volume = Variable(volume.float()).cuda()
                 y_pred = model(x_depth=var_x_depth, x_tsdf=var_x_volume, p=position)
             else:
-                var_x_rgb = Variable(rgb.float())
+                var_x_rgb = Variable(rgb.float()).cuda()
                 y_pred = model(x_depth=var_x_depth, x_rgb=var_x_rgb, p=position)  # y_pred.size(): (bs, C, W, H, D)
 
             y_pred = y_pred.cpu().data.numpy()  # CUDA to CPU, Variable to numpy

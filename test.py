@@ -50,7 +50,7 @@ def main():
 def test():
     # ---- create model ---------- ---------- ---------- ---------- ----------#
     net = make_model(args.model, num_classes=12).cuda()
-    net = torch.nn.DataParallel(net)  # Multi-GPU
+    #net = torch.nn.DataParallel(net)  # Multi-GPU
 
     # ---- load pretrained model --------- ---------- ----------#
     if os.path.isfile(args.resume):
@@ -71,3 +71,5 @@ def test():
     print('pixel-acc {:.4f}, mean IoU {:.1f}, SSC IoU:{}'.format(v_acc*100.0, v_mean_iou*100.0, v_ssc_iou*100.0))
 
 
+if __name__ == '__main__':
+    main()

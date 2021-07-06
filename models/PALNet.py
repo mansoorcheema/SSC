@@ -144,7 +144,7 @@ class SSC_PALNet(nn.Module):
         x2_depth = x2_1_depth + x2_2_depth
         x2_depth = F.relu(x2_depth, inplace=True)
 
-        x_tsdf_s = torch.unsqueeze(x_tsdf, 0)
+        x_tsdf_s = torch.unsqueeze(x_tsdf, 0).permute(1,0,2,3,4)
 
         x1_tsdf = self.pool2(x_tsdf_s)            # (BS, 16L, 120L, 72L, 120L)
         x1_tsdf = F.relu(x1_tsdf, inplace=True)

@@ -14,6 +14,7 @@ import imageio
 import numpy as np
 import numpy.matlib
 import torch.utils.data
+from pathlib import Path
 
 from torchvision import transforms
 
@@ -49,6 +50,41 @@ class NYUDataset(torch.utils.data.Dataset):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
         print('Dataset:{} files'.format(len(self.filepaths)))
+
+        correct = False
+        if self.subfix == 'npz' and correct:
+            self._correct_labels()
+
+    
+    def _correct_labels(self):
+        print ("Correcting labels with projection indices!")
+        N = len(self.filepaths)
+        for index in range(N):
+            print ("Correcting {}/{} label..".format(index+1, N))
+            #name = self.filepaths[index][48:-11]
+            filepath = Path(self.filepaths[index])
+            target_file = filepath.parent.with_name(filepath.parent.stem + "_fixed") / filepath.stem
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            if target_file.with_suffix('.npz').exists():
+                print("{} exists! skipping...".format(target_file.with_suffix('.npz')))
+                continue
+
+            with np.load(self.filepaths[index]) as npz_file:
+                # print(npz_file.files)
+                rgb_tensor = npz_file['rgb']
+                depth_tensor = npz_file['depth']
+                tsdf_hr = npz_file['tsdf_hr']  # flipped TSDF, (240, 144, 240, 1)
+                # target_hr = npz_file['target_hr']
+                tsdf_lr = npz_file['tsdf_lr']
+                target_lr = npz_file['target_lr']
+                position = npz_file['position']
+
+                vox_origin, cam_pose, _ = self._read_rle('/media/scratch1/mcheem/datasets/depthbin/{}/{}.bin'.format("NYUtest" if self.istest  else "NYUtrain", filepath.stem[:-7]))
+                depth = self._read_depth('/media/scratch1/mcheem/datasets/depthbin/{}/{}.png'.format("NYUtest" if self.istest  else "NYUtrain", filepath.stem[:-7]))  
+                _, _, position2, position4 = self._depth2voxel(depth, cam_pose, vox_origin, self.param)
+                np.savez_compressed(target_file , rgb=rgb_tensor, depth=depth_tensor, tsdf_hr=tsdf_hr, target_lr=target_lr, position=position2, tsdf_lr=tsdf_lr)
+
+
 
     def __getitem__(self, index):
         _name = self.filepaths[index][:-4]

@@ -10,7 +10,15 @@
             "request": "launch",
             "python":"${workspaceFolder}/venv/bin/python",
             "program": "${workspaceFolder}/main.py",
-            "args" : ["--model=palnet", "--dataset=nyu","--epochs=1", "--batch_size=2","--workers=1","--lr=0.01", "--lr_adj_n=1", "--lr_adj_rate=0.1","--model_name=SSC_PalNet"]
+            "args" : ["--model=palnet", "--dataset=nyu","--epochs=1", "--batch_size=1","--workers=0","--lr=0.01", "--lr_adj_n=1", "--lr_adj_rate=0.1","--model_name=SSC_PalNet"]
+        },
+        {
+            "name": "Python: start test.py",
+            "type": "python",
+            "request": "launch",
+            "python":"${workspaceFolder}/venv/bin/python",
+            "program": "${workspaceFolder}/test.py",
+            "args" : ["--model=ddrnet", "--dataset=nyu", "--batch_size=4", "--resume=weights/003/cpBest_SSC_DDRNet.pth.tar"]
         },
     ]
 }

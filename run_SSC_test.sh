@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-source /home/amax/jie/pyenv/pytorch1.2/bin/activate
+source venv/bin/activate
 
 
-CUDA_VISIBLE_DEVICES=0,1,2,3 python ./test.py \
+python ./test.py \
 --model='ddrnet' \
---dataset=nyucad \
+--dataset=nyu \
 --batch_size=4 \
---resume='path\to\pretrained\weights' 2>&1 |tee test_DDRNet_NYUCAD.log
+--resume='weights/003/cpBest_SSC_DDRNet.pth.tar' 2>&1 |tee test_DDRNet_NYU.log
 
 
 deactivate
