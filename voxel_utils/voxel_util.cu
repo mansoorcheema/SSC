@@ -51,11 +51,13 @@ __global__ void depth2Grid(double *  cam_info, double *  vox_info,  double * dep
   int z = (int)floor((point_base[0] - vox_origin[0])/vox_unit);
   int x = (int)floor((point_base[1] - vox_origin[1])/vox_unit);
   int y = (int)floor((point_base[2] - vox_origin[2])/vox_unit);
-
+	
+	//printf("calculating depth mappings");
   // mark vox_binary_GPU
   if( x >= 0 && x < vox_size[0] && y >= 0 && y < vox_size[1] && z >= 0 && z < vox_size[2]){
     int vox_idx = z * vox_size[0] * vox_size[1] + y * vox_size[0] + x;
     vox_binary_GPU[vox_idx] = double(1.0);
+    //printf("depth mapping at %d,%d,%d is %d\n", x,y,z,vox_idx);
     depth2voxel_idx[pixel_y * frame_width + pixel_x] = vox_idx;
   }
 }
@@ -181,7 +183,7 @@ __global__ void SquaredDistanceTransform(double * cam_info, double * vox_info, d
 }
 
 void ComputeTSDF(double * cam_info_CPU, double * vox_info_CPU,
-                 double * depth_data_CPU,  double * vox_tsdf_CPU, double * depth_mapping_idxs_CPU) {
+                 double * depth_data_CPU,  double * vox_tsdf_CPU, double * depth_mapping_idxs_CPU, double * occupancy) {
 
   int frame_width  = cam_info_CPU[0];
   int frame_height = cam_info_CPU[1];
@@ -241,7 +243,9 @@ void ComputeTSDF(double * cam_info_CPU, double * vox_info_CPU,
   tsdfTransform <<< BLOCK_NUM, THREADS_NUM >>> (vox_info_GPU, vox_tsdf_GPU);
   
   // copy computed TSDF back to CPU
-  cudaMemcpy(vox_tsdf_CPU, vox_tsdf_GPU,num_crop_voxels * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaMemcpy(vox_tsdf_CPU, vox_tsdf_GPU, num_crop_voxels * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaMemcpy(depth_mapping_idxs_CPU, depth_mapping_idxs_GPU, frame_height * frame_width * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaMemcpy(occupancy, vox_binary_GPU,  num_crop_voxels * sizeof(double), cudaMemcpyDeviceToHost);
   
   // deallocation
   cudaFree(vox_info_GPU);

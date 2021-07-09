@@ -4,7 +4,7 @@
 #include <numpy/arrayobject.h>
 
 extern double * myVectorAdd(double * h_A, double * h_B, int numElements);
-extern void ComputeTSDF(double * cam_info_CPU, double * vox_info_CPU, double * depth_data_CPU,  double * vox_tsdf_CPU, double * depth_mapping_idxs_CPU);
+extern void ComputeTSDF(double * cam_info_CPU, double * vox_info_CPU, double * depth_data_CPU,  double * vox_tsdf_CPU, double * depth_mapping_idxs_CPU, double * occupancy);
 
 
 int sum(int a, int b ) { 
@@ -14,13 +14,28 @@ int sum(int a, int b ) {
 
 static PyObject* compute_tsdf(PyObject* self, PyObject *args) {
 
-    PyArrayObject* cam_info_CPU, * vox_info_CPU, * depth_data_CPU, * vox_tsdf_CPU, * depth_mapping_idxs_CPU;
-    if (PyArg_ParseTuple(args, "O!O!O!O!O!", &PyArray_Type, &cam_info_CPU,  &PyArray_Type, &vox_info_CPU,  &PyArray_Type, &depth_data_CPU,   &PyArray_Type, &vox_tsdf_CPU, &PyArray_Type, &depth_mapping_idxs_CPU ))
+    PyArrayObject* cam_info_CPU, * vox_info_CPU, * depth_data_CPU, * vox_tsdf_CPU, * depth_mapping_idxs_CPU, *occupancy;
+    if (!PyArg_ParseTuple(args, "O!O!O!O!O!O!", &PyArray_Type, &cam_info_CPU,  &PyArray_Type, &vox_info_CPU,  &PyArray_Type, &depth_data_CPU,   &PyArray_Type, &vox_tsdf_CPU, &PyArray_Type, &depth_mapping_idxs_CPU,  &PyArray_Type, &occupancy )) {
+    	PyErr_SetString(PyExc_ValueError, "Failed to parse arguments");
     	return NULL;
+    	
+    	}
     
-     printf("elements parsed\n");
+     printf("Arguments parsed\n---------------\n");
      
-     ComputeTSDF((double *) cam_info_CPU -> data,(double *) vox_info_CPU -> data,(double *) depth_data_CPU -> data,(double *) vox_tsdf_CPU -> data,(double *) depth_mapping_idxs_CPU -> data);
+     printf ("cam_info: %d\n", cam_info_CPU->dimensions[0]);
+     printf ("vox_info: %d\n", vox_info_CPU->dimensions[0]);
+     printf ("depth_data: %d\n", depth_data_CPU->dimensions[0]);
+     printf ("vox_tsdf: %d\n", vox_tsdf_CPU->dimensions[0]);
+     printf ("depth_mapping_idxs: %d\n", depth_mapping_idxs_CPU->dimensions[0]);
+     printf ("occupancy: %d\n", occupancy->dimensions[0]);
+     
+     if (cam_info_CPU -> nd != 1 || vox_info_CPU -> nd != 1 || cam_info_CPU->descr->type_num != PyArray_DOUBLE || vox_info_CPU->descr->type_num != PyArray_DOUBLE || depth_data_CPU->descr->type_num != PyArray_DOUBLE || vox_tsdf_CPU->descr->type_num != PyArray_DOUBLE || depth_mapping_idxs_CPU->descr->type_num != PyArray_DOUBLE || occupancy->descr->type_num != PyArray_DOUBLE) {
+        PyErr_SetString(PyExc_ValueError, "arrays must be one-dimensional and of type float");
+        return NULL;
+    }
+     
+     ComputeTSDF((double *) cam_info_CPU -> data,(double *) vox_info_CPU -> data,(double *) depth_data_CPU -> data,(double *) vox_tsdf_CPU -> data,(double *) depth_mapping_idxs_CPU -> data, (double *) occupancy -> data);
     
     return Py_None;
     
@@ -96,5 +111,5 @@ static struct PyModuleDef voxel_util_module = {
 
 PyMODINIT_FUNC PyInit_VoxelUtils(void) {
     import_array()
-    return PyModule_Create(&VoxelUtils);
+    return PyModule_Create(&voxel_util_module);
 }

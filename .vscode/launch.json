@@ -18,7 +18,15 @@
             "request": "launch",
             "python":"${workspaceFolder}/venv/bin/python",
             "program": "${workspaceFolder}/test.py",
-            "args" : ["--model=ddrnet", "--dataset=nyu", "--batch_size=4", "--resume=weights/003/cpBest_SSC_DDRNet.pth.tar"]
+            "args" : ["--model=ddrnet", "--dataset=nyu", "--batch_size=4", "--resume=cpBest_SSC_DDRNet.pth.tar"]
+        },
+        {
+            "name": "Python: start infer.py",
+            "type": "python",
+            "request": "launch",
+            "python":"${workspaceFolder}/venv/bin/python",
+            "program": "${workspaceFolder}/infer.py",
+            "args" : ["--model=palnet", "--dataset=nyu","--model_name=SSC_PalNet", "--resume=weights/006/cpBest_SSC_PALNet.pth.tar", "--files=/home/mcheem/data/datasets/large_room/"]
         },
     ]
 }
