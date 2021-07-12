@@ -254,7 +254,7 @@ def compute_tsdf(depth_data, vox_origin, cam_k, cam_pose0, voxel_size=(240,144,2
 
     vu.compute_tsdf(cam_info, vox_info, depth_data_reshaped, vox_tsdf, depth_mapping_idxs, voxel_occupancy) 
     #print (vox_tsdf_CPU.shape)
-    return vox_tsdf.reshape(voxel_size), depth_mapping_idxs.reshape(width, height), \
+    return vox_tsdf.reshape(voxel_size), depth_mapping_idxs.reshape( height, width), \
          voxel_occupancy.reshape(voxel_size).astype(np.int64) * 11
 
 def get_origin_from_depth_image(depth, cam_k, cam_pose):
@@ -285,14 +285,15 @@ def get_origin_from_depth_image(depth, cam_k, cam_pose):
     return vox_origin
 
 def load_data_from_depth_image(filename):
-    filename0="/home/mcheem/data/datasets/large_room/frame_541.png"
+    #filename0="/home/mcheem/data/datasets/large_room/frame_541.png"
     #filename="/Data/datasets/asl/run1/000041_depth.tiff"
     #depth = imageio.imread(filename)
     #depth = np.asarray(depth/ 8000.0)  # numpy.float64
     # assert depth.shape == (img_h, img_w), 'incorrect default size'
     #depth = np.asarray(depth)
     #depth = np.asarray(depth)
-    frame_data = np.load(filename0[:-4] + ".npz")
+    rgb = None
+    frame_data = np.load(filename[:-4] + ".npz")
     depth_npy = frame_data["depth"]
     cam_pose0 = frame_data["pose"]
     
@@ -315,19 +316,19 @@ def load_data_from_depth_image(filename):
    
      
     #cam_pose0 = np.array([[1.0,0,0,0],[0,0,1.0,0],[0,-1.0,0,0],[0,0,0,1]]).dot(cam_pose0)
-    voxel_binary, voxel_xyz, position, position4 = _depth2voxel(depth_npy, cam_pose0, vox_origin, cam_k)
-    voxel_binary = _downsample_label(voxel_binary)
-    voxel_occupancy = _downsample_label(voxel_occupancy)
-    labeled_voxel2ply(voxel_occupancy,"scan_occ.ply")
-    labeled_voxel2ply(voxel_binary,"scan_occ2.ply")
-    np.set_printoptions(suppress=True)
+    #voxel_binary, voxel_xyz, position, position4 = _depth2voxel(depth_npy, cam_pose0, vox_origin, cam_k)
+    #voxel_binary = _downsample_label(voxel_binary)
+    #voxel_occupancy = _downsample_label(voxel_occupancy)
+    #labeled_voxel2ply(voxel_occupancy,"scan_occ2.ply")
+    #labeled_voxel2ply(voxel_binary,"scan_occ.ply")
+    #np.set_printoptions(suppress=True)
     #print(cam_pose)
     #print (cam_pose0)
-    pass
+    return rgb, torch.as_tensor(depth_npy).unsqueeze(0).unsqueeze(0), torch.as_tensor(vox_tsdf).unsqueeze(0), torch.as_tensor(depth_mapping_idxs).unsqueeze(0).unsqueeze(0), torch.as_tensor(voxel_occupancy.transpose(2,1,0)).unsqueeze(0)
 
 
 def infer():
-    net = make_model(args.model, num_classes=12)
+    net = make_model(args.model, num_classes=12).cuda() 
 
     if args.resume:
         if os.path.isfile(args.resume):
@@ -341,31 +342,19 @@ def infer():
     net.eval()  # switch to train mode
     torch.cuda.empty_cache()
     
-    voxels_size = (240, 144, 240)
     #file_list = os.listdir(args.files)
     file_list = glob.glob(str(Path(args.files) / "*.npz"))
-    occupancy = np.zeros(np.prod(voxels_size), dtype=np.uint8)
-
+    
     for step, depth_file in enumerate(file_list):
-        rgb, depth, tsdf, target, position, occupancy_grid = load_data_from_depth_image(depth_file)
+        rgb, depth, tsdf, position, occupancy_grid = load_data_from_depth_image(depth_file)
         
-        #target should be a LongTensor. (bs, 60L, 36L, 60L)
-        y_true = target.long().contiguous()
-        y_true = Variable(y_true.view(-1))  # bs * D * H * W
-
-        occupancy.fill(0)
-        idxs = position.reshape(-1).numpy()
-        occupancy[idxs] = 11
-        occupancy_grid = occupancy.reshape(voxels_size)
-        occupancy_grid = _downsample_label(occupancy_grid)
-
         # ---- (bs, C, D, H, W), channel first for Conv3d in pyTorch
         # FloatTensor to Variable. (bs, channels, 240L, 144L, 240L)
-        x_depth = Variable(depth.float())
-        position = position.long()
+        x_depth = Variable(depth.float()).cuda() 
+        position = position.long().cuda() 
 
         if args.model == 'palnet':
-            x_tsdf = Variable(tsdf.float())
+            x_tsdf = Variable(tsdf.float()).cuda() 
             y_pred = net(x_depth=x_depth, x_tsdf=x_tsdf, p=position)
         else:
             x_rgb = Variable(rgb.float())
@@ -378,11 +367,12 @@ def infer():
 
         pred_cls = pred_cls.reshape(1,60,36,60)
 
-        labeled_voxel2ply(target[0].numpy(),"outputs_thresh/target{}.ply".format(step))
-        labeled_voxel2ply(pred_cls[0].numpy(),"outputs_thresh/preds{}.ply".format(step))
-        labeled_voxel2ply(occupancy_grid,"outputs_thresh/scan_occ_{}.ply".format(step))
-        y_pred = y_pred.permute(0, 2, 3, 4, 1).contiguous()  # (BS, C, D, H, W) --> (BS, D, H, W, C)
-        y_pred = y_pred.view(-1, 12)  # C = 12
+        #labeled_voxel2ply(target[0].numpy(),"outputs_thresh/target{}.ply".format(step))
+        labeled_voxel2ply(pred_cls[0].cpu().numpy(),"outputs/{}_preds.ply".format(Path(depth_file).stem))
+        occupancy_grid_downsampled = _downsample_label(occupancy_grid[0].numpy())
+        labeled_voxel2ply(occupancy_grid_downsampled,"outputs/{}_scan.ply".format(Path(depth_file).stem))
+        pass
+       
 
 def main():
     # ---- Check CUDA
