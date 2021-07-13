@@ -10,7 +10,7 @@
             "request": "launch",
             "python":"${workspaceFolder}/venv/bin/python",
             "program": "${workspaceFolder}/main.py",
-            "args" : ["--model=palnet", "--dataset=nyu","--epochs=1", "--batch_size=1","--workers=0","--lr=0.01", "--lr_adj_n=1", "--lr_adj_rate=0.1","--model_name=SSC_PalNet"]
+            "args" : ["--model=ccpnet", "--dataset=nyu","--epochs=100", "--batch_size=1","--workers=0","--lr=0.01", "--lr_adj_n=1", "--lr_adj_rate=0.1","--model_name=SSC_CCPNet"]
         },
         {
             "name": "Python: start test.py",
@@ -26,7 +26,7 @@
             "request": "launch",
             "python":"${workspaceFolder}/venv/bin/python",
             "program": "${workspaceFolder}/infer.py",
-            "args" : ["--model=palnet", "--dataset=nyu","--model_name=SSC_PalNet", "--resume=weights/002/cpBest_SSC_PalNet.pth.tar", "--files=/home/mcheem/data/datasets/large_room/"]
+            "args" : ["--model=palnet", "--dataset=nyu","--model_name=SSC_PalNet", "--resume=weights/008/cpBest_SSC_PALNet.pth.tar", "--files=/home/mcheem/data/datasets/large_room/"]
         },
     ]
 }

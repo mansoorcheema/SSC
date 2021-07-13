@@ -99,16 +99,16 @@ class NYUDataset(torch.utils.data.Dataset):
                 rgb_tensor = npz_file['rgb']
                 depth_tensor = npz_file['depth']
                 tsdf_hr = npz_file['tsdf_hr']  # flipped TSDF, (240, 144, 240, 1)
-                # target_hr = npz_file['target_hr']
+                target_hr = npz_file['target_hr']
                 target_lr = npz_file['target_lr']
                 position = npz_file['position']
 
                 if self.istest:
                     tsdf_lr = npz_file['tsdf_lr']  # ( 60,  36,  60)
                     # nonempty = self.get_nonempty(tsdf, 'TSDF')
-                    nonempty = self.get_nonempty2(tsdf_lr, target_lr, 'TSDF')  # 这个更符合SUNCG的做法
-                    return rgb_tensor, depth_tensor, tsdf_hr, target_lr.T, nonempty.T, position, _name + '.png'
-            return rgb_tensor, depth_tensor, tsdf_hr, target_lr.T, position, _name + '.png'
+                    nonempty = self.get_nonempty2(tsdf_hr, target_hr, 'TSDF')  # 这个更符合SUNCG的做法
+                    return rgb_tensor, depth_tensor, tsdf_hr, target_hr, nonempty, position, _name + '.png'
+            return rgb_tensor, depth_tensor, tsdf_hr, target_hr, position, _name + '.png'
 
         # else:
         #

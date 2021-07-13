@@ -33,7 +33,7 @@ import config
 parser = argparse.ArgumentParser(description='PyTorch SSC Training')
 parser.add_argument('--dataset', type=str, default='nyu', choices=['nyu', 'nyucad', 'debug'],
                     help='dataset name (default: nyu)')
-parser.add_argument('--model', type=str, default='ddrnet', choices=['ddrnet', 'aicnet', 'grfnet', 'palnet'],
+parser.add_argument('--model', type=str, default='ddrnet', choices=['ddrnet', 'aicnet', 'grfnet', 'palnet', 'ccpnet'],
                     help='model name (default: palnet)')
 # parser.add_argument('--data_augment', default=False, type=bool,  help='data augment for training')
 parser.add_argument('--epochs', default=50, type=int, metavar='N', help='number of total epochs to run')
@@ -108,6 +108,10 @@ def train():
         cp_filename))
     print("Checkpoint filename:{}".format(cp_filename))
 
+    
+    params = sum(p.numel() for p in net.parameters())
+    print("Params:{}".format(params))
+
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_adj_n, gamma=args.lr_adj_rate, last_epoch=-1)
         
     np.set_printoptions(precision=1)
@@ -128,7 +132,8 @@ def train():
         step_count = 0
 
         torch.cuda.empty_cache()
-        for step, (rgb, depth, tsdf, target, position, _) in tqdm(enumerate(train_loader), desc=decs_str, unit='step'):
+        t = tqdm(enumerate(train_loader), desc=decs_str, unit='step')
+        for step, (rgb, depth, tsdf, target, position, _) in t:
             # target should be a LongTensor. (bs, 60L, 36L, 60L)
             y_true = target.long().contiguous()
             y_true = Variable(y_true.view(-1)).cuda()  # bs * D * H * W
@@ -141,6 +146,10 @@ def train():
             if args.model == 'palnet':
                 x_tsdf = Variable(tsdf.float()).cuda()
                 y_pred = net(x_depth=x_depth, x_tsdf=x_tsdf, p=position)
+            elif args.model == 'ccpnet':
+                tsdf = torch.unsqueeze(tsdf, 0).permute(1,0,2,3,4)
+                tsdf = Variable(tsdf.float()).cuda()
+                y_pred = net(tsdf)
             else:
                 x_rgb = Variable(rgb.float()).cuda()
                 y_pred = net(x_depth=x_depth, x_rgb=x_rgb, p=position)
@@ -150,7 +159,8 @@ def train():
 
             optimizer.zero_grad()
             loss = loss_func(y_pred, y_true)
-
+            t.set_postfix(loss=loss.item())
+            
             loss.backward()
             optimizer.step()
 
@@ -194,6 +204,12 @@ def validate_on_dataset_stsdf(model, date_loader, save_ply=False):
             if args.model == 'palnet':
                 var_x_volume = Variable(volume.float()).cuda()
                 y_pred = model(x_depth=var_x_depth, x_tsdf=var_x_volume, p=position)
+
+            elif args.model == 'ccpnet':
+                x_tsdf_s = torch.unsqueeze(volume, 0).permute(1,0,2,3,4)
+                x_tsdf = Variable(x_tsdf_s.float()).cuda()
+                y_pred = model(x_tsdf)
+                
             else:
                 var_x_rgb = Variable(rgb.float()).cuda()
                 y_pred = model(x_depth=var_x_depth, x_rgb=var_x_rgb, p=position)  # y_pred.size(): (bs, C, W, H, D)

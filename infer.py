@@ -285,7 +285,7 @@ def get_origin_from_depth_image(depth, cam_k, cam_pose):
     return vox_origin
 
 def load_data_from_depth_image(filename):
-    #filename0="/home/mcheem/data/datasets/large_room/frame_541.png"
+    filename="/home/mcheem/data/datasets/large_room/frame_41.png"
     #filename="/Data/datasets/asl/run1/000041_depth.tiff"
     #depth = imageio.imread(filename)
     #depth = np.asarray(depth/ 8000.0)  # numpy.float64
@@ -324,7 +324,7 @@ def load_data_from_depth_image(filename):
     #np.set_printoptions(suppress=True)
     #print(cam_pose)
     #print (cam_pose0)
-    return rgb, torch.as_tensor(depth_npy).unsqueeze(0).unsqueeze(0), torch.as_tensor(vox_tsdf).unsqueeze(0), torch.as_tensor(depth_mapping_idxs).unsqueeze(0).unsqueeze(0), torch.as_tensor(voxel_occupancy.transpose(2,1,0)).unsqueeze(0)
+    return rgb, torch.as_tensor(depth_npy).unsqueeze(0).unsqueeze(0), torch.as_tensor(vox_tsdf).unsqueeze(0), torch.as_tensor(depth_mapping_idxs).unsqueeze(0).unsqueeze(0), torch.as_tensor(voxel_occupancy).unsqueeze(0)
 
 
 def infer():
@@ -362,7 +362,7 @@ def infer():
 
         
         scores = torch.nn.Softmax(dim=0)(y_pred.view(1,12,-1)[0])
-        scores[0] += 0.35 #Increase offset of empty class to weed out low prob predictions
+        scores[0] += 0.15 #Increase offset of empty class to weed out low prob predictions
         pred_cls = torch.argmax(scores, dim=0)
 
         pred_cls = pred_cls.reshape(1,60,36,60)

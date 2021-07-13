@@ -39,7 +39,7 @@ class SSC_PALNet(nn.Module):
 
         in_channel_3d = depth_out
         stride = 2
-        self.pool1 = nn.Conv3d(in_channel_3d, 8, 7, stride, 3)
+        self.pool1 = nn.Conv3d(in_channel_3d, 8, 4, stride, 3,dilation=2)
         self.reduction2_1 = nn.Conv3d(8, 16, 1, 1, 0, bias=False)
         self.conv2_1 = nn.Sequential(
             nn.Conv3d(8, 8, 1, 1, 0),

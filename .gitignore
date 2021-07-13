@@ -4,3 +4,4 @@ venv
 *.log
 weights
 logs
+outputs
