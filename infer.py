@@ -362,7 +362,7 @@ def infer():
 
         
         scores = torch.nn.Softmax(dim=0)(y_pred.view(1,12,-1)[0])
-        scores[0] += 0.35 #Increase offset of empty class to weed out low prob predictions
+        scores[0] += 0.3 #Increase offset of empty class to weed out low prob predictions
         pred_cls = torch.argmax(scores, dim=0)
 
         pred_cls = pred_cls.reshape(1,60,36,60)
