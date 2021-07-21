@@ -1,7 +1,5 @@
-*.tar
 venv
 *__pycache__*
 *.log
-weights
 logs
 outputs*
