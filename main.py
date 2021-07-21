@@ -78,6 +78,7 @@ def train():
     
     # ---- create model ---------- ---------- ---------- ---------- ----------#
     net = make_model(args.model, num_classes=12).cuda()
+    param_count = sum(p.numel() for p in net.parameters())
     #net = torch.nn.DataParallel(net)  # Multi-GPU
 
     # ---- optionally resume from a checkpoint --------- ---------- ----------#

@@ -44,7 +44,7 @@ class SSC_PALNet(nn.Module):
         self.conv2_1 = nn.Sequential(
             nn.Conv3d(8, 8, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(8, 8, 3, 1, 1),
+            nn.Conv3d(8, 8, 3, 1, 1,groups=2),
             nn.ReLU(inplace=True),
             nn.Conv3d(8, 16, 1, 1, 0)
         )
@@ -57,7 +57,7 @@ class SSC_PALNet(nn.Module):
         self.conv2_2 = nn.Sequential(
             nn.Conv3d(8, 8, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(8, 8, 3, 1, 1),
+            nn.Conv3d(8, 8, 3, 1, 1, groups=2),
             nn.ReLU(inplace=True),
             nn.Conv3d(8, 16, 1, 1, 0)
         )
@@ -68,7 +68,7 @@ class SSC_PALNet(nn.Module):
         self.conv3_1 = nn.Sequential(
             nn.Conv3d(16, 8, 1, stride, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(8, 8, 3, 1, 1),
+            nn.Conv3d(8, 8, 3, 1, 1, groups=2),
             nn.ReLU(inplace=True),
             nn.Conv3d(8, 32, 1, 1, 0),
         )
@@ -79,7 +79,7 @@ class SSC_PALNet(nn.Module):
         self.conv3_2 = nn.Sequential(
             nn.Conv3d(16, 8, 1, stride, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(8, 8, 3, 1, 1),
+            nn.Conv3d(8, 8, 3, 1, 1, groups=2),
             nn.ReLU(inplace=True),
             nn.Conv3d(8, 32, 1, 1, 0),
         )
@@ -89,7 +89,7 @@ class SSC_PALNet(nn.Module):
         self.conv3_3 = nn.Sequential(
             nn.Conv3d(64, 32, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(32, 32, 3, 1, 1),
+            nn.Conv3d(32, 32, 3, 1, 1, groups=4),
             nn.ReLU(inplace=True),
             nn.Conv3d(32, 64, 1, 1, 0),
         )
@@ -97,8 +97,8 @@ class SSC_PALNet(nn.Module):
         self.conv3_5 = nn.Sequential(
             nn.Conv3d(64, 32, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(32, 32, 3, 1, 2, 2),
-            nn.Conv3d(32, 32, 3, 1, 2, 2),
+            nn.Conv3d(32, 32, 3, 1, 2, 2, groups=4),
+            nn.Conv3d(32, 32, 3, 1, 2, 2, groups=4),
             nn.ReLU(inplace=True),
             nn.Conv3d(32, 64, 1, 1, 0),
         )
@@ -106,8 +106,8 @@ class SSC_PALNet(nn.Module):
         self.conv3_7 = nn.Sequential(
             nn.Conv3d(64, 32, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(32, 32, 3, 1, 2, 2),
-            nn.Conv3d(32, 32, 3, 1, 2, 2),
+            nn.Conv3d(32, 32, 3, 1, 2, 2, groups=4),
+            nn.Conv3d(32, 32, 3, 1, 2, 2, groups=4),
             nn.ReLU(inplace=True),
             nn.Conv3d(32, 64, 1, 1, 0),
         )
