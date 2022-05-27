@@ -39,12 +39,12 @@ class SSC_PALNet(nn.Module):
 
         in_channel_3d = depth_out
         stride = 2
-        self.pool1 = nn.Conv3d(in_channel_3d, 8, 4, stride, 3,dilation=2)
+        self.pool1 = nn.Conv3d(in_channel_3d, 8, 7, stride, 3)
         self.reduction2_1 = nn.Conv3d(8, 16, 1, 1, 0, bias=False)
         self.conv2_1 = nn.Sequential(
             nn.Conv3d(8, 8, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(8, 8, 3, 1, 1,groups=2),
+            nn.Conv3d(8, 8, 3, 1, 1),
             nn.ReLU(inplace=True),
             nn.Conv3d(8, 16, 1, 1, 0)
         )
@@ -57,7 +57,7 @@ class SSC_PALNet(nn.Module):
         self.conv2_2 = nn.Sequential(
             nn.Conv3d(8, 8, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(8, 8, 3, 1, 1, groups=2),
+            nn.Conv3d(8, 8, 3, 1, 1),
             nn.ReLU(inplace=True),
             nn.Conv3d(8, 16, 1, 1, 0)
         )
@@ -68,18 +68,18 @@ class SSC_PALNet(nn.Module):
         self.conv3_1 = nn.Sequential(
             nn.Conv3d(16, 8, 1, stride, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(8, 8, 3, 1, 1, groups=2),
+            nn.Conv3d(8, 8, 3, 1, 1),
             nn.ReLU(inplace=True),
             nn.Conv3d(8, 32, 1, 1, 0),
         )
-        self.expand_depth_feats_channels = nn.Conv3d(32, 64, 1, 1, 0, bias=False)
+        #self.expand_depth_feats_channels = nn.Conv3d(32, 64, 1, 1, 0, bias=False)
 
         stride = 2
         self.reduction3_2 = nn.Conv3d(16, 32, 1, stride, 0, bias=False)
         self.conv3_2 = nn.Sequential(
             nn.Conv3d(16, 8, 1, stride, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(8, 8, 3, 1, 1, groups=2),
+            nn.Conv3d(8, 8, 3, 1, 1),
             nn.ReLU(inplace=True),
             nn.Conv3d(8, 32, 1, 1, 0),
         )
@@ -89,7 +89,7 @@ class SSC_PALNet(nn.Module):
         self.conv3_3 = nn.Sequential(
             nn.Conv3d(64, 32, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(32, 32, 3, 1, 1, groups=4),
+            nn.Conv3d(32, 32, 3, 1, 1),
             nn.ReLU(inplace=True),
             nn.Conv3d(32, 64, 1, 1, 0),
         )
@@ -97,8 +97,8 @@ class SSC_PALNet(nn.Module):
         self.conv3_5 = nn.Sequential(
             nn.Conv3d(64, 32, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(32, 32, 3, 1, 2, 2, groups=4),
-            nn.Conv3d(32, 32, 3, 1, 2, 2, groups=4),
+            nn.Conv3d(32, 32, 3, 1, 2, 2),
+            nn.Conv3d(32, 32, 3, 1, 2, 2),
             nn.ReLU(inplace=True),
             nn.Conv3d(32, 64, 1, 1, 0),
         )
@@ -106,8 +106,8 @@ class SSC_PALNet(nn.Module):
         self.conv3_7 = nn.Sequential(
             nn.Conv3d(64, 32, 1, 1, 0),
             nn.ReLU(inplace=True),
-            nn.Conv3d(32, 32, 3, 1, 2, 2, groups=4),
-            nn.Conv3d(32, 32, 3, 1, 2, 2, groups=4),
+            nn.Conv3d(32, 32, 3, 1, 2, 2),
+            nn.Conv3d(32, 32, 3, 1, 2, 2),
             nn.ReLU(inplace=True),
             nn.Conv3d(32, 64, 1, 1, 0),
         )
@@ -146,15 +146,15 @@ class SSC_PALNet(nn.Module):
         x2_depth = x2_1_depth + x2_2_depth
         x2_depth = F.relu(x2_depth, inplace=True)
 
-        # x_tsdf_s = torch.unsqueeze(x_tsdf, 0).permute(1,0,2,3,4)
+        x_tsdf_s = torch.unsqueeze(x_tsdf, 0).permute(1,0,2,3,4)
 
-        # x1_tsdf = self.pool2(x_tsdf_s)            # (BS, 16L, 120L, 72L, 120L)
-        # x1_tsdf = F.relu(x1_tsdf, inplace=True)
+        x1_tsdf = self.pool2(x_tsdf_s)            # (BS, 16L, 120L, 72L, 120L)
+        x1_tsdf = F.relu(x1_tsdf, inplace=True)
 
-        # x2_1_tsdf = self.reduction2_2(x1_tsdf)     # (BS, 32L, 120L, 72L, 120L)
-        # x2_2_tsdf = self.conv2_2(x1_tsdf)
-        # x2_tsdf = x2_1_tsdf + x2_2_tsdf
-        # x2_tsdf = F.relu(x2_tsdf, inplace=True)
+        x2_1_tsdf = self.reduction2_2(x1_tsdf)     # (BS, 32L, 120L, 72L, 120L)
+        x2_2_tsdf = self.conv2_2(x1_tsdf)
+        x2_tsdf = x2_1_tsdf + x2_2_tsdf
+        x2_tsdf = F.relu(x2_tsdf, inplace=True)
 
         x3_1_depth = self.reduction3_1(x2_depth)  # (BS, 64L, 60L, 36L, 60L)
         x3_2_depth = self.conv3_1(x2_depth)
@@ -162,14 +162,14 @@ class SSC_PALNet(nn.Module):
         x_3_depth = F.relu(x_3_depth, inplace=True)
         # print('SSC: x_3_depth', x_3_depth.size())
 
-        # x3_1_tsdf = self.reduction3_2(x2_tsdf)   # (BS, 64L, 60L, 36L, 60L)
-        # x3_2_tsdf = self.conv3_2(x2_tsdf)        #
-        # x_3_tsdf = x3_1_tsdf + x3_2_tsdf
-        # x_3_tsdf = F.relu(x_3_tsdf, inplace=True)
+        x3_1_tsdf = self.reduction3_2(x2_tsdf)   # (BS, 64L, 60L, 36L, 60L)
+        x3_2_tsdf = self.conv3_2(x2_tsdf)        #
+        x_3_tsdf = x3_1_tsdf + x3_2_tsdf
+        x_3_tsdf = F.relu(x_3_tsdf, inplace=True)
         # print('SSC: x_3_tsdf', x_3_tsdf.size())
 
-        #x_3 = torch.cat((x_3_depth, x_3_tsdf), dim=1)
-        x_3 = self.expand_depth_feats_channels(x_3_depth) 
+        x_3 = torch.cat((x_3_depth,x_3_tsdf), dim=1)
+        #x_3 = self.expand_depth_feats_channels(x_3_depth) 
 
         # ---- 1/4
         x_4 = self.conv3_3(x_3) + x_3

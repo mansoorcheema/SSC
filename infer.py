@@ -13,6 +13,7 @@ from torch.autograd import Variable
 import datetime
 from models import make_model
 import config
+import time
 
 import VoxelUtils as vu
 
@@ -145,7 +146,7 @@ def _downsample_label(label, voxel_size=(240, 144, 240), downscale=4):
 def _save_point_cloud(points, filename):
         with open(filename, "w") as f:
             for point in points.reshape(-1,3):
-                f.write("{};{};{}\n".format(point[0],point[1], point[2]))
+                f.write("{};{};{}\n".format(float(point[0]),float(point[1]), float(point[2])))
         
 
 def _depth2voxel(depth, cam_pose, vox_origin, cam_k, voxel_unit=0.02, voxel_size = (240, 144, 240), ):
@@ -169,7 +170,7 @@ def _depth2voxel(depth, cam_pose, vox_origin, cam_k, voxel_unit=0.02, voxel_size
         pt_world[:, :, 2] = p[2][0] * pt_cam[:, :, 0] + p[2][1] * pt_cam[:, :, 1] + p[2][2] * pt_cam[:, :, 2] + p[2][3]
         
         
-        vox_origin = pt_world.min(axis=(0,1))
+        #vox_origin = pt_world.min(axis=(0,1))
         pt_world[:, :, 0] = pt_world[:, :, 0] - vox_origin[0]
         pt_world[:, :, 1] = pt_world[:, :, 1] - vox_origin[1]
         pt_world[:, :, 2] = pt_world[:, :, 2] - vox_origin[2]
@@ -182,13 +183,15 @@ def _depth2voxel(depth, cam_pose, vox_origin, cam_k, voxel_unit=0.02, voxel_size
         # pt_world2[:, :, 1] = pt_world[:, :, 2]  # y 高低
         # pt_world2[:, :, 2] = pt_world[:, :, 1]  # z 深度
 
-        pt_world2[:, :, 0] = pt_world[:, :, 1]  # x 原始paper方法
+        pt_world2[:, :, 0] = pt_world[:, :, 0]  # x 原始paper方法
         pt_world2[:, :, 1] = pt_world[:, :, 2]  # y
-        pt_world2[:, :, 2] = pt_world[:, :, 0]  # z
+        pt_world2[:, :, 2] = pt_world[:, :, 1]  # z
         _save_point_cloud(pt_world2, "point_cloud_world_aligned.txt")
 
         # ---- World coordinate to grid/voxel coordinate
         point_grid = pt_world2 / voxel_unit  # Get point in grid coordinate, each grid is a voxel
+
+        _save_point_cloud(point_grid, "point_cloud_world_grid_aligned.txt")
         point_grid = np.rint(point_grid).astype(np.int32)  # .reshape((-1, 3))  # (H*W, 3) (H, W, 3)
 
         # ---- crop depth to grid/voxel
@@ -229,26 +232,26 @@ def compute_tsdf(depth_data, vox_origin, cam_k, cam_pose0, voxel_size=(240,144,2
     voxel_occupancy = np.zeros(voxel_size[0] * voxel_size[1] * voxel_size[2], dtype=np.float64 )
 
     # setup camera info
-    cam_info = np.zeros(27,dtype=np.float64);
-    cam_info[0] = width;
-    cam_info[1] =  height;
+    cam_info = np.zeros(27,dtype=np.float64)
+    cam_info[0] = width
+    cam_info[1] =  height
 
     for i in range(9):
-        cam_info[i + 2] = np.asarray(cam_k).reshape(-1)[i];
+        cam_info[i + 2] = np.asarray(cam_k).reshape(-1)[i]
   
     for i in range(16):
-        cam_info[i + 11] = cam_pose0.reshape(-1)[i];
+        cam_info[i + 11] = cam_pose0.reshape(-1)[i]
 
     # setup voxel info
     vox_info = np.zeros(8,dtype=np.float64)
     vox_info[0] = 0.02; # vox unit
-    vox_info[1] = 0.24; # vox margin
+    vox_info[1] = 0.04; # vox margin
 
     for i in range(3):
-        vox_info[i + 2] = voxel_size[i];
+        vox_info[i + 2] = voxel_size[i]
 
     for i in range(3):
-        vox_info[i + 5] = vox_origin[i];
+        vox_info[i + 5] = vox_origin[i]
 
     depth_data_reshaped = depth_data.astype(np.float64).reshape(-1)
 
@@ -286,7 +289,7 @@ def get_origin_from_depth_image(depth, cam_k, cam_pose):
 
 def load_data_from_depth_image(filename):
     #filename0="/home/mcheem/data/datasets/large_room/frame_541.png"
-    #filename="/Data/datasets/asl/run1/000041_depth.tiff"
+    #filename="/Data/Study/ETH/Thesis/code/Utils/depth_from_rosbag/depth_images_app_sync/000541_depth.npz"
     #depth = imageio.imread(filename)
     #depth = np.asarray(depth/ 8000.0)  # numpy.float64
     # assert depth.shape == (img_h, img_w), 'incorrect default size'
@@ -299,24 +302,28 @@ def load_data_from_depth_image(filename):
     
 
     #depth[depth>8] = depth.min()
-    depth_npy[depth_npy>8] = depth_npy.min()
+    #depth_npy[depth_npy>8] = depth_npy.min()
     # with open(filename[:-10] + "pose.txt") as f:
     #     lines = f.read().splitlines()
 
     # cam_pose = np.asarray([np.fromstring(l, dtype=np.float32, sep=' ') for l in lines])
     
-    cam_k = [[320, 0, 320],  
-            [0, 320, 240],  
-            [0, 0, 1]]
-    vox_origin = [0,0,0,0] #[-2.75309,0.931033,-0.05]
+    #this is the camera intrinsic that we have been using all along
+    # cam_k = [[320, 0, 320],  
+    #         [0, 320, 240],  
+    #         [0, 0, 1]]
+    
+    # this if from the ros bag that lukas shared
+    cam_k = [[504.6463623046875, 0.0, 330.97552490234375], [0.0, 504.8226318359375, 327.1402282714844], [0.0, 0.0, 1.0]]
+    #vox_origin = [0,0,0,0] #[-2.75309,0.931033,-0.05]
     vox_origin = get_origin_from_depth_image(depth_npy,cam_k, cam_pose0) 
     # cam_info_CPU, vox_info_CPU,depth_data_CPU, vox_tsdf_CPU, depth_mapping_idxs_CPU
     
-    vox_tsdf, depth_mapping_idxs, voxel_occupancy = compute_tsdf(depth_npy, vox_origin, cam_k, cam_pose0)
+    #vox_tsdf, depth_mapping_idxs, voxel_occupancy = compute_tsdf(depth_npy, vox_origin, cam_k, cam_pose0)
    
      
     #cam_pose0 = np.array([[1.0,0,0,0],[0,0,1.0,0],[0,-1.0,0,0],[0,0,0,1]]).dot(cam_pose0)
-    #voxel_binary, voxel_xyz, position, position4 = _depth2voxel(depth_npy, cam_pose0, vox_origin, cam_k)
+    voxel_binary, voxel_xyz, position, position4 = _depth2voxel(depth_npy, cam_pose0, vox_origin, cam_k)
     #voxel_binary = _downsample_label(voxel_binary)
     #voxel_occupancy = _downsample_label(voxel_occupancy)
     #labeled_voxel2ply(voxel_occupancy,"scan_occ2.ply")
@@ -324,17 +331,36 @@ def load_data_from_depth_image(filename):
     #np.set_printoptions(suppress=True)
     #print(cam_pose)
     #print (cam_pose0)
-    return rgb, torch.as_tensor(depth_npy).unsqueeze(0).unsqueeze(0), torch.as_tensor(vox_tsdf).unsqueeze(0), torch.as_tensor(depth_mapping_idxs).unsqueeze(0).unsqueeze(0), torch.as_tensor(voxel_occupancy.transpose(2,1,0)).unsqueeze(0)
+    return rgb, depth_npy, None, position, voxel_binary
+    #return rgb, depth_npy, None, depth_mapping_idxs, voxel_occupancy.transpose(2,1,0)
+    #return rgb, torch.as_tensor(depth_npy).unsqueeze(0).unsqueeze(0), torch.as_tensor(vox_tsdf).unsqueeze(0), torch.as_tensor(depth_mapping_idxs).unsqueeze(0).unsqueeze(0), torch.as_tensor(voxel_occupancy.transpose(2,1,0)).unsqueeze(0)
 
+def load_occupancy_prob_from_depth_image(filename, max_depth=8, cam_k=[[320, 0, 320], [0, 320, 240], [0, 0, 1]]):
+    """
+    Read depth and pose froms ave npz file and return tsdf voxels.
+    """
+    rgb = None
+    frame_data = np.load(filename[:-4] + ".npz")
+    depth_npy = frame_data["depth"]
+    cam_pose = frame_data["pose"]
+
+    depth_npy[depth_npy > max_depth] = depth_npy.min()
+    vox_origin = utils.get_origin_from_depth_image(depth_npy, cam_k, cam_pose)
+
+    _, _, voxel_occupancy = utils.compute_tsdf(
+        depth_npy, vox_origin, cam_k, cam_pose, voxel_size=(64,64,64), voxel_unit_size=0.08)
+    voxel_occupancy_tensor =  torch.as_tensor(voxel_occupancy.transpose(2, 1, 0)).unsqueeze(0) / 11.0
+    #log_odds_occupancy = voxel_occupancy_tensor * np.log(0.9/0.1)
+    return voxel_occupancy_tensor# log_odds_occupancy
 
 def infer():
-    net = make_model(args.model, num_classes=12).cuda() 
+    net = make_model(args.model, num_classes=12)
 
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             cp_states = torch.load(args.resume, map_location=torch.device('cpu'))
-            net.load_state_dict(cp_states['state_dict'], strict=True)
+            net.load_state_dict(cp_states['state_dict'], strict=False)
         else:
             raise Exception("=> NO checkpoint found at '{}'".format(args.resume))
 
@@ -344,17 +370,41 @@ def infer():
     
     #file_list = os.listdir(args.files)
     file_list = glob.glob(str(Path(args.files) / "*.npz"))
-    
+    # scene_inpainting_network = torch.jit.load("/Data/SI_ScanNet_0614.pt",torch.device('cpu'))
+
+    # t = torch.randn(1,64,64,64).float()
+    # m = torch.ones(1,64,64,64).float()
+    # tt = 0
+    # x_depth= torch.randn(1,1,640,480).float()
+    # x_tsdf=torch.randn(1,240,144,240).float()
+    # p = torch.ones(640,480).long()
+    # for i in range(10):
+    #     time1 = time.time()
+    #     #y_pred = scene_inpainting_network.forward(t, m)
+    #     y_pred = net(x_depth=x_depth, x_tsdf=x_tsdf, p=p)
+    #     time2 = time.time()
+    #     tt += (time2-time1)*1000.0
+    # tt /= 10
+
+    # for name, para in scene_inpainting_network.named_parameters():
+    #     print('{}: {}'.format(name, para.shape))
+
     for step, depth_file in enumerate(file_list):
         rgb, depth, tsdf, position, occupancy_grid = load_data_from_depth_image(depth_file)
         
+        ####################
+        # occ_map = load_occupancy_prob_from_depth_image(depth_file)
+        # log_odds_map = occ_map * np.log(0.8/0.2)
+        # mask = log_odds_map <= 0
+        #inputs= torch.tensor([log_odds_map.float(),mask.float()])
+        #y_pred = scene_inpainting_network.forward(log_odds_map.float())
         # ---- (bs, C, D, H, W), channel first for Conv3d in pyTorch
         # FloatTensor to Variable. (bs, channels, 240L, 144L, 240L)
-        x_depth = Variable(depth.float()).cuda() 
-        position = position.long().cuda() 
+        x_depth = Variable(torch.tensor(depth).unsqueeze(0).unsqueeze(0))
+        position = torch.tensor(position).unsqueeze(0).unsqueeze(0).long()
 
         if args.model == 'palnet':
-            x_tsdf = Variable(tsdf.float()).cuda() 
+            x_tsdf = Variable(torch.zeros(occupancy_grid.shape).float().unsqueeze(0))
             y_pred = net(x_depth=x_depth, x_tsdf=x_tsdf, p=position)
         else:
             x_rgb = Variable(rgb.float())
@@ -369,9 +419,9 @@ def infer():
 
         #labeled_voxel2ply(target[0].numpy(),"outputs_thresh/target{}.ply".format(step))
         labeled_voxel2ply(pred_cls[0].cpu().numpy(),"outputs/{}_preds.ply".format(Path(depth_file).stem))
-        occupancy_grid_downsampled = _downsample_label(occupancy_grid[0].numpy())
+        occupancy_grid_downsampled = _downsample_label(occupancy_grid)
         labeled_voxel2ply(occupancy_grid_downsampled,"outputs/{}_scan.ply".format(Path(depth_file).stem))
-        pass
+        # pass
        
 
 def main():

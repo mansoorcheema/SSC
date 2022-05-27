@@ -78,7 +78,7 @@ def train():
     
     # ---- create model ---------- ---------- ---------- ---------- ----------#
     net = make_model(args.model, num_classes=12).cuda()
-    param_count = sum(p.numel() for p in net.parameters())
+    param_count = sum(p.numel() for p in net.parameters() if p.requires_grad)
     #net = torch.nn.DataParallel(net)  # Multi-GPU
 
     # ---- optionally resume from a checkpoint --------- ---------- ----------#
@@ -189,14 +189,14 @@ def validate_on_dataset_stsdf(model, date_loader, save_ply=False):
     with torch.no_grad():
         # ---- STSDF  depth, input, target, position, _
         for step, (rgb, depth, volume, y_true, nonempty, position, filename) in tqdm(enumerate(date_loader), desc='Validating', unit='frame'):
-            var_x_depth = Variable(depth.float()).cuda()
-            position = position.long().cuda()
+            var_x_depth = Variable(depth.float())
+            position = position.long()
 
             if args.model == 'palnet':
-                var_x_volume = Variable(volume.float()).cuda()
+                var_x_volume = Variable(volume.float())
                 y_pred = model(x_depth=var_x_depth, x_tsdf=var_x_volume, p=position)
             else:
-                var_x_rgb = Variable(rgb.float()).cuda()
+                var_x_rgb = Variable(rgb.float())
                 y_pred = model(x_depth=var_x_depth, x_rgb=var_x_rgb, p=position)  # y_pred.size(): (bs, C, W, H, D)
 
             y_pred = y_pred.cpu().data.numpy()  # CUDA to CPU, Variable to numpy
