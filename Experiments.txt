@@ -155,6 +155,14 @@ PALNET
 Notes:
 Resetted the 2D to 3D mapping to orignal and removed the tsdf transpose. Only the batch size is 1 and trained the orignal code for longer to compare with experiment 6 that used fixed 2d to 3d mapping(Its the same with just batch size 1 as the apparent fix in the 2D to 3D mapping was not applied on the fixed dataset- refer to Experiment 6).
 
+Results:
+Validating: 654frame [21:04,  1.93s/frame]
+Validate with TSDF:, p 56.6, r 93.9, IoU 54.5
+pixel-acc 51.7760,  mean IoU 24.4, SSC IoU:[33.509697  16.653837  91.71225   28.760096   0.        10.324566
+ 42.815716  34.059395   7.9105573  0.        25.814936  10.49337  ]
+ 
+ finished in: 0:21:04.630199
+ 
 Conclusion:
 Results were great. Got 24.4 semantic IOU ( mIoU 24.413163011724297% in epoch 30). Weights saved in weights/008.
 
@@ -205,6 +213,12 @@ Used separated convolutions in the conv3d layers to reduce parameters and speed 
 
 Conclusion:
 Significant reduction in training with an epoch taking 6:08 minutes. The imporvement is observed using Pytorch 1.9 cuda 11.1 but only in training as inference is actually a bit slower (may be conv3d forward needs optimization). The performance is worse using pytorch 1.4.0.
+
+Validating: 654frame [12:51,  1.18s/frame]
+Validate with TSDF:, p 56.8, r 93.5, IoU 54.5
+pixel-acc 51.4140, mean IoU 23.5, SSC IoU:[34.100475 15.811245 91.8399   27.996233  0.        7.794175 42.50374
+ 31.15435   6.881058  0.       25.127422  9.487553]
+ finished in: 0:12:51.966060
 ...
 
 

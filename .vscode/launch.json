@@ -18,7 +18,7 @@
             "request": "launch",
             "python":"${workspaceFolder}/venv/bin/python",
             "program": "${workspaceFolder}/test.py",
-            "args" : ["--model=palnet", "--dataset=nyu", "--batch_size=1", "--resume=weights/008/cpBest_SSC_PALNet.pth.tar"]
+            "args" : ["--model=palnet", "--dataset=nyu", "--batch_size=1", "--resume=weights/011/cpBest_SSC_PALNet.pth.tar"]
         },
         {
             "name": "Python: start infer.py",
