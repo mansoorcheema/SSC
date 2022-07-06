@@ -168,7 +168,15 @@ def _depth2voxel(depth, cam_pose, vox_origin, cam_k, voxel_unit=0.02, voxel_size
         pt_world[:, :, 0] = p[0][0] * pt_cam[:, :, 0] + p[0][1] * pt_cam[:, :, 1] + p[0][2] * pt_cam[:, :, 2] + p[0][3]
         pt_world[:, :, 1] = p[1][0] * pt_cam[:, :, 0] + p[1][1] * pt_cam[:, :, 1] + p[1][2] * pt_cam[:, :, 2] + p[1][3]
         pt_world[:, :, 2] = p[2][0] * pt_cam[:, :, 0] + p[2][1] * pt_cam[:, :, 1] + p[2][2] * pt_cam[:, :, 2] + p[2][3]
-        
+        # flip z axis
+        pt_world[:, :, 1] *= -1
+
+        pt_world2 = np.zeros(pt_world.shape, dtype=np.float32)  # (h, w, 3)
+        # swap x and z axis
+        pt_world2[:, :, 0] = pt_world[:, :, 2]  # x 水平
+        pt_world2[:, :, 1] = pt_world[:, :, 1]  # y 高低
+        pt_world2[:, :, 2] = pt_world[:, :, 0]  # z 深度
+        pt_world = pt_world2
         
         #vox_origin = pt_world.min(axis=(0,1))
         pt_world[:, :, 0] = pt_world[:, :, 0] - vox_origin[0]
@@ -183,15 +191,16 @@ def _depth2voxel(depth, cam_pose, vox_origin, cam_k, voxel_unit=0.02, voxel_size
         # pt_world2[:, :, 1] = pt_world[:, :, 2]  # y 高低
         # pt_world2[:, :, 2] = pt_world[:, :, 1]  # z 深度
 
-        pt_world2[:, :, 0] = pt_world[:, :, 0]  # x 原始paper方法
-        pt_world2[:, :, 1] = pt_world[:, :, 2]  # y
-        pt_world2[:, :, 2] = pt_world[:, :, 1]  # z
-        _save_point_cloud(pt_world2, "point_cloud_world_aligned.txt")
+        # kinect data is already in grid coordniate system
+        # pt_world2[:, :, 0] = pt_world[:, :, 0]  # x 原始paper方法
+        # pt_world2[:, :, 1] = pt_world[:, :, 2]  # y
+        # pt_world2[:, :, 2] = pt_world[:, :, 1]  # z
+       # _save_point_cloud(pt_world, "point_cloud_world_aligned.txt")
 
         # ---- World coordinate to grid/voxel coordinate
-        point_grid = pt_world2 / voxel_unit  # Get point in grid coordinate, each grid is a voxel
+        point_grid = pt_world / voxel_unit  # Get point in grid coordinate, each grid is a voxel
 
-        _save_point_cloud(point_grid, "point_cloud_world_grid_aligned.txt")
+        #_save_point_cloud(point_grid, "point_cloud_world_grid_aligned.txt")
         point_grid = np.rint(point_grid).astype(np.int32)  # .reshape((-1, 3))  # (H*W, 3) (H, W, 3)
 
         # ---- crop depth to grid/voxel
@@ -220,8 +229,8 @@ def _depth2voxel(depth, cam_pose, vox_origin, cam_k, voxel_unit=0.02, voxel_size
 
         # output --- 3D Tensor, 240 x 144 x 240
 
-        del depth, gx, gy, pt_cam, pt_world, pt_world2, point_grid  # Release Memory
-        return voxel_binary, voxel_xyz, position, position4  # (W, H, D), (W, H, D, 3)
+        del depth, gx, gy, pt_cam, point_grid  # Release Memory
+        return voxel_binary, voxel_xyz, position, position4, pt_world  # (W, H, D), (W, H, D, 3)
 
 
 def compute_tsdf(depth_data, vox_origin, cam_k, cam_pose0, voxel_size=(240,144,240)):
@@ -282,9 +291,18 @@ def get_origin_from_depth_image(depth, cam_k, cam_pose):
     pt_world[:, :, 0] = p[0][0] * pt_cam[:, :, 0] + p[0][1] * pt_cam[:, :, 1] + p[0][2] * pt_cam[:, :, 2] + p[0][3]
     pt_world[:, :, 1] = p[1][0] * pt_cam[:, :, 0] + p[1][1] * pt_cam[:, :, 1] + p[1][2] * pt_cam[:, :, 2] + p[1][3]
     pt_world[:, :, 2] = p[2][0] * pt_cam[:, :, 0] + p[2][1] * pt_cam[:, :, 1] + p[2][2] * pt_cam[:, :, 2] + p[2][3]
-    
+    pt_world[:, :, 1] *= -1
+
+    pt_world2 = np.zeros(pt_world.shape, dtype=np.float32)  # (h, w, 3)
+    # swap x and z axis
+    pt_world2[:, :, 0] = pt_world[:, :, 2]  # x 水平
+    pt_world2[:, :, 1] = pt_world[:, :, 1]  # y 高低
+    pt_world2[:, :, 2] = pt_world[:, :, 0]  # z 深度
+    pt_world = pt_world2
     
     vox_origin = pt_world.min(axis=(0,1))
+    med = np.median(pt_world[pt_world.all(axis=(2))], axis=(0))
+    vox_origin = med - [2.4,1.44,2.4]
     return vox_origin
 
 def load_data_from_depth_image(filename):
@@ -323,7 +341,8 @@ def load_data_from_depth_image(filename):
    
      
     #cam_pose0 = np.array([[1.0,0,0,0],[0,0,1.0,0],[0,-1.0,0,0],[0,0,0,1]]).dot(cam_pose0)
-    voxel_binary, voxel_xyz, position, position4 = _depth2voxel(depth_npy, cam_pose0, vox_origin, cam_k)
+    voxel_binary, voxel_xyz, position, position4, pt_world = _depth2voxel(depth_npy, cam_pose0, vox_origin, cam_k)
+    _save_point_cloud(pt_world, "outputs/{}_point_cloud_world_aligned.txt".format(Path(filename).stem))
     #voxel_binary = _downsample_label(voxel_binary)
     #voxel_occupancy = _downsample_label(voxel_occupancy)
     #labeled_voxel2ply(voxel_occupancy,"scan_occ2.ply")
@@ -411,14 +430,21 @@ def infer():
             y_pred = net(x_depth=x_depth, x_rgb=x_rgb, p=position)
 
         
-        scores = torch.nn.Softmax(dim=0)(y_pred.view(1,12,-1)[0])
-        scores[0] += 0.3 #Increase offset of empty class to weed out low prob predictions
-        pred_cls = torch.argmax(scores, dim=0)
+        # scores = torch.nn.Softmax(dim=0)(y_pred.view(1,12,-1)[0])
+        # scores[0] += 0.3 #Increase offset of empty class to weed out low prob predictions
+        # pred_cls = torch.argmax(scores, dim=0)
 
-        pred_cls = pred_cls.reshape(1,60,36,60)
+        scores = torch.nn.Softmax(dim=0)(y_pred.squeeze())
+        # Threshold max probs for encoding free space
+        max_prob = 1.0 - 1e-8
+        scores[scores> max_prob] = max_prob
+        free_space_confidence = scores[0]
+        
+        # Encode free space scores along with class id.
+        preds = torch.argmax(scores, dim=0).cpu().numpy() + free_space_confidence.detach().cpu().numpy()
 
         #labeled_voxel2ply(target[0].numpy(),"outputs_thresh/target{}.ply".format(step))
-        labeled_voxel2ply(pred_cls[0].cpu().numpy(),"outputs/{}_preds.ply".format(Path(depth_file).stem))
+        labeled_voxel2ply(pred_cls[0].cpu().numpy().transpose(),"outputs/{}_preds.ply".format(Path(depth_file).stem))
         occupancy_grid_downsampled = _downsample_label(occupancy_grid)
         labeled_voxel2ply(occupancy_grid_downsampled,"outputs/{}_scan.ply".format(Path(depth_file).stem))
         # pass
